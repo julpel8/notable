@@ -95,3 +95,18 @@ val MIGRATION_32_33 = object : Migration(32, 33) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_Stroke_pageId` ON `Stroke` (`pageId`)")
     }
 }
+
+val MIGRATION_35_36 = object : Migration(35, 36) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS `DailyPage` (
+                `date` TEXT NOT NULL,
+                `pageId` TEXT NOT NULL,
+                `exportedAt` INTEGER,
+                PRIMARY KEY(`date`),
+                FOREIGN KEY(`pageId`) REFERENCES `Page`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+        """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_DailyPage_pageId` ON `DailyPage` (`pageId`)")
+    }
+}

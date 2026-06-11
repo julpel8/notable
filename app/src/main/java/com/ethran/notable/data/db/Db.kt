@@ -54,7 +54,7 @@ class Converters {
 
 @Database(
     entities = [Folder::class, Notebook::class, Page::class, Stroke::class, Image::class, Kv::class, DailyPage::class],
-    version = 35,
+    version = 36,
     autoMigrations = [
         AutoMigration(19, 20),
         AutoMigration(20, 21),
@@ -134,7 +134,8 @@ object DatabaseModule {
                 MIGRATION_16_17,
                 MIGRATION_17_18,
                 MIGRATION_22_23,
-                MIGRATION_32_33
+                MIGRATION_32_33,
+                MIGRATION_35_36
             )
             .build()
     }
