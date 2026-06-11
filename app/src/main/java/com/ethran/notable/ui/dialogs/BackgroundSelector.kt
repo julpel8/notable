@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -94,6 +95,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+import java.time.LocalDate
 
 private val log = ShipBook.getLogger("BackgroundSelector")
 
@@ -128,6 +130,7 @@ fun BackgroundSelector(
                 is BackgroundType.CoverImage -> "Cover"
                 is BackgroundType.Image, is BackgroundType.ImageRepeating -> "Image"
                 is BackgroundType.Pdf, is BackgroundType.AutoPdf -> "PDF"
+                is BackgroundType.Daily -> "Daily"
                 else -> "Native"
             }
         )
@@ -221,8 +224,11 @@ fun BackgroundSelector(
                         .padding(horizontal = 20.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Background Mode Buttons
-                    listOf("Native", "Image", "Cover", "PDF").forEach { modeName ->
+                    // Background Mode Buttons. Daily is per-page only: as a notebook
+                    // default it would freeze one date for every new page.
+                    val modes = if (isNotebookBgSelector) listOf("Native", "Image", "Cover", "PDF")
+                    else listOf("Native", "Daily", "Image", "Cover", "PDF")
+                    modes.forEach { modeName ->
                         Button(
                             onClick = {
                                 selectedBackgroundMode = modeName
@@ -297,6 +303,18 @@ fun BackgroundSelector(
                         )
                     }
 
+                    "Daily" -> {
+                        ShowDailyOption(
+                            currentBackground = pageBackground,
+                            isDailyApplied = pageBackgroundType == BackgroundType.Daily,
+                            onBackgroundChange = { dateIso ->
+                                onChange(BackgroundType.Daily.key, dateIso)
+                                pageBackground = dateIso
+                                pageBackgroundType = BackgroundType.Daily
+                            }
+                        )
+                    }
+
                     "Native" -> {
                         ShowNativeOption(
                             currentBackground = pageBackground,
@@ -348,6 +366,46 @@ fun BackgroundSelector(
     }
 }
 
+
+/**
+ * The calendar template normally reserved for journal pages: events and tasks
+ * of the date stored in the page background. Day-by-day navigation stays
+ * exclusive to real journal pages.
+ */
+@Composable
+fun ShowDailyOption(
+    currentBackground: String,
+    isDailyApplied: Boolean,
+    onBackgroundChange: (dateIso: String) -> Unit
+) {
+    val today = LocalDate.now().toString()
+
+    Text(
+        stringResource(R.string.background_daily_description),
+        modifier = Modifier.padding(8.dp)
+    )
+
+    if (isDailyApplied) {
+        Text(
+            stringResource(R.string.background_daily_applied, currentBackground),
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(8.dp)
+        )
+    }
+
+    Button(
+        onClick = { onBackgroundChange(today) },
+        modifier = Modifier.padding(8.dp),
+        colors = ButtonDefaults.buttonColors(
+            backgroundColor = Color.White,
+            contentColor = Color.Black
+        ),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, Color.Black)
+    ) {
+        Text(stringResource(R.string.background_daily_apply, today))
+    }
+}
 
 @Composable
 fun ShowNativeOption(

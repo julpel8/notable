@@ -62,7 +62,6 @@ import com.ethran.notable.ui.LocalSnackContext
 import com.ethran.notable.ui.SnackConf
 import com.ethran.notable.ui.components.BreadCrumb
 import com.ethran.notable.ui.components.NotebookCard
-import com.ethran.notable.ui.components.ShowPagesRow
 import com.ethran.notable.ui.dialogs.EmptyBookWarningHandler
 import com.ethran.notable.ui.dialogs.FolderConfigDialog
 import com.ethran.notable.ui.dialogs.NotebookConfigDialog
@@ -71,6 +70,7 @@ import com.ethran.notable.ui.noRippleClickable
 import com.ethran.notable.ui.viewmodels.LibraryUiState
 import com.ethran.notable.ui.viewmodels.LibraryViewModel
 import compose.icons.FeatherIcons
+import compose.icons.feathericons.Calendar
 import compose.icons.feathericons.FilePlus
 import compose.icons.feathericons.Folder
 import compose.icons.feathericons.FolderPlus
@@ -94,8 +94,6 @@ private val log = ShipBook.getLogger("HomeView")
 fun Library(
     navController: NavController,
     folderId: String? = null,
-    goToPage: (String) -> Unit = {},
-    onCreateNewQuickPage: (String?) -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -125,13 +123,16 @@ fun Library(
         exportEngine = viewModel.exportEngine,
         syncScheduler = viewModel.syncScheduler,
         uiState = uiState,
+        onOpenJournal = {
+            viewModel.openTodayJournal { pageId ->
+                navController.navigate(EditorDestination.createRoute(pageId, null))
+            }
+        },
         onNavigateToFolder = { id -> navController.navigate(LibraryDestination.createRoute(id)) },
         onNavigateToSettings = { navController.navigate("settings") },
         onNavigateToEditor = { pageId, bookId ->
             navController.navigate(EditorDestination.createRoute(pageId, bookId))
         },
-        goToPage = goToPage,
-        onCreateNewQuickPage = { onCreateNewQuickPage(uiState.folderId) },
         onCreateNewFolder = viewModel::createNewFolder,
         onDeleteEmptyBook = viewModel::deleteEmptyBook,
         onCreateNewNotebook = viewModel::onCreateNewNotebook,
@@ -150,11 +151,10 @@ fun LibraryContent(
     exportEngine: ExportEngine,
     syncScheduler: SyncScheduler,
     uiState: LibraryUiState,
+    onOpenJournal: () -> Unit,
     onNavigateToFolder: (String?) -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToEditor: (String, String) -> Unit,
-    goToPage: (String) -> Unit,
-    onCreateNewQuickPage: () -> Unit,
     onCreateNewFolder: () -> Unit,
     onDeleteEmptyBook: (String) -> Unit,
     onCreateNewNotebook: () -> Unit,
@@ -164,7 +164,27 @@ fun LibraryContent(
 ) {
     Column(Modifier.fillMaxSize()) {
         Topbar {
-            Row(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Daily journal is the main screen; this returns to today's page.
+                Row(
+                    Modifier
+                        .border(0.5.dp, Color.Black)
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                        .noRippleClickable(onClick = onOpenJournal)
+                ) {
+                    Icon(
+                        imageVector = FeatherIcons.Calendar,
+                        contentDescription = "Journal",
+                        modifier = Modifier.height(20.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(text = stringResource(R.string.home_open_journal))
+                }
                 Spacer(modifier = Modifier.weight(1f))
                 BadgedBox(
                     badge = {
@@ -197,17 +217,6 @@ fun LibraryContent(
                 folders = uiState.folders,
                 onNavigateToFolder = onNavigateToFolder,
                 onCreateNewFolder = onCreateNewFolder
-            )
-
-            Spacer(Modifier.height(10.dp))
-            ShowPagesRow(
-                appRepository = appRepository,
-                pages = uiState.singlePages,
-                currentPageId = null,
-                title = stringResource(R.string.home_quick_pages), onSelectPage = goToPage,
-                showAddQuickPage = true,
-                onCreateNewQuickPage = onCreateNewQuickPage,
-                onPreviewMissing = onPreviewMissing
             )
 
             Spacer(Modifier.height(10.dp))
@@ -304,8 +313,6 @@ fun NotebookGrid(
     onImportXopp: (Uri) -> Unit,
     onPreviewMissing: (String) -> Unit
 ) {
-    Text(text = stringResource(R.string.home_notebooks))
-    Spacer(Modifier.height(10.dp))
     LazyVerticalGrid(
         columns = GridCells.Adaptive(100.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -482,8 +489,7 @@ fun LibraryContentPreview() {
             // Needs pageIds to render the card (empty books show a warning)
             Notebook(id = "book_1", title = "Meeting Minutes", pageIds = listOf("page1", "page2")),
             Notebook(id = "book_2", title = "Journal", pageIds = listOf("page3"))
-        ),
-        singlePages = emptyList() // Populate with mock Page() objects if you want to see Quick Pages
+        )
     )
 
     // 2. Render the stateless component with empty lambdas
@@ -512,8 +518,7 @@ fun LibraryContentUpdatePreview() {
         isImporting = true,      // Will hide the delete warning for empty books
         breadcrumbFolders = emptyList(),
         folders = emptyList(),
-        books = emptyList(),
-        singlePages = emptyList()
+        books = emptyList()
     )
 
 //    LibraryContent(

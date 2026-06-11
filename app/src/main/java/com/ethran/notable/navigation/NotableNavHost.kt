@@ -57,14 +57,7 @@ fun NotableNavHost(
             ) {
                 Library(
                     navController = appNavigator.navController,
-                    folderId = it.arguments?.getString(LibraryDestination.FOLDER_ID_ARG),
-                    goToPage = { pageId -> appNavigator.goToPage(appRepository, pageId) },
-                    onCreateNewQuickPage = { folderId ->
-                        appNavigator.onCreateNewQuickPage(
-                            appRepository,
-                            folderId
-                        )
-                    }
+                    folderId = it.arguments?.getString(LibraryDestination.FOLDER_ID_ARG)
                 )
                 appNavigator.cleanCurrentPageId()
             }

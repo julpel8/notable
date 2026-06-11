@@ -21,3 +21,12 @@ fun hasFilePermission(context: Context): Boolean {
         ) == PackageManager.PERMISSION_GRANTED
     }
 }
+
+/**
+ * READ_CALENDAR: needed by the daily journal template to print the day's events.
+ */
+fun hasCalendarPermission(context: Context): Boolean {
+    return ContextCompat.checkSelfPermission(
+        context, Manifest.permission.READ_CALENDAR
+    ) == PackageManager.PERMISSION_GRANTED
+}

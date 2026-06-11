@@ -169,16 +169,6 @@ class NotableNavigator(
         }
     }
 
-    fun onCreateNewQuickPage(appRepository: AppRepository, folderId: String?) {
-        coroutineScope.launch {
-            val pageId = withContext(Dispatchers.IO) {
-                appRepository.createNewQuickPage(parentFolderId = folderId)
-            } ?: return@launch
-            navController.navigate(EditorDestination.createRoute(pageId, null))
-        }
-    }
-
-
     fun onPageChange(backStackEntry: NavBackStackEntry, newPageId: String) {
         // SAVE new pageId in savedStateHandle - do not call navigate
         backStackEntry.savedStateHandle["pageId"] = newPageId

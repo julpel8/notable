@@ -42,11 +42,13 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ethran.notable.R
 import com.ethran.notable.editor.ui.Topbar
 import com.ethran.notable.editor.utils.autoEInkAnimationOnScroll
 import com.ethran.notable.editor.utils.setAnimationMode
@@ -163,6 +165,10 @@ fun PagesContent(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    AddPagePill(onClick = { onAddPageAfter(state.pageIds.size) })
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
                     GenerateThumbsSwitch(onClick = onGenerateThumbnails)
 
                     Spacer(modifier = Modifier.width(12.dp))
@@ -316,6 +322,23 @@ fun PagesContent(
                     onDragEnd = { setAnimationMode(false) })
             }
         }
+    }
+}
+
+/**
+ * Appends a new page at the end of the notebook.
+ */
+@Composable
+private fun AddPagePill(onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White)
+            .border(1.dp, Color.Black, RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 8.dp)) {
+        Text(stringResource(R.string.pages_add_page), color = Color.Black)
     }
 }
 

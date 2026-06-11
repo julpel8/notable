@@ -24,7 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.ethran.notable.R
+import com.ethran.notable.data.datastore.AppSettings
 import com.ethran.notable.data.datastore.BUTTON_SIZE
+import com.ethran.notable.data.datastore.GlobalAppSettings
 import com.ethran.notable.editor.ToolbarAction
 import com.ethran.notable.editor.ToolbarUiState
 import com.ethran.notable.editor.state.Mode
@@ -42,18 +44,24 @@ import com.ethran.notable.ui.noRippleClickable
 fun ToolbarMenu(
     uiState: ToolbarUiState,
     onAction: (ToolbarAction) -> Unit,
+    position: AppSettings.Position = GlobalAppSettings.current.toolbarPosition,
 ) {
     val context = LocalContext.current
 
+    val placement = if (isToolbarVertical(position)) toolbarPopupPlacement(context, position)
+    else ToolbarPopupPlacement(
+        Alignment.TopEnd,
+        IntOffset(
+            convertDpToPixel((-10).dp, context).toInt(),
+            convertDpToPixel(50.dp, context).toInt()
+        )
+    )
     Popup(
-        alignment = Alignment.TopEnd,
+        alignment = placement.alignment,
         onDismissRequest = {
                 onAction(ToolbarAction.ToggleMenu)
         },
-        offset = IntOffset(
-            convertDpToPixel((-10).dp, context).toInt(),
-            convertDpToPixel(50.dp, context).toInt()
-        ),
+        offset = placement.offset,
         properties = PopupProperties(focusable = true),
     ) {
         ToolbarMenuContent(
@@ -75,13 +83,6 @@ private fun ToolbarMenuContent(
             .background(Color.White)
             .width(IntrinsicSize.Max)
     ) {
-        // Home / Library
-        MenuItem(stringResource(R.string.home_view_name)) {
-            onAction(ToolbarAction.NavigateToLibrary)
-            onAction(ToolbarAction.ToggleMenu)
-        }
-        DividerCentered()
-
         // Page exports
         MenuItem(stringResource(R.string.export_page_to, "PDF")) {
             onAction(ToolbarAction.ExportPage(ExportFormat.PDF))
@@ -99,10 +100,10 @@ private fun ToolbarMenuContent(
             onAction(ToolbarAction.ExportPage(ExportFormat.XOPP))
             onAction(ToolbarAction.ToggleMenu)
         }
-        DividerCentered()
 
         // Book exports
         if (uiState.notebookId != null) {
+            DividerCentered()
             MenuItem(stringResource(R.string.export_book_to, "PDF")) {
                 onAction(ToolbarAction.ExportBook(ExportFormat.PDF))
                 onAction(ToolbarAction.ToggleMenu)
@@ -115,23 +116,6 @@ private fun ToolbarMenuContent(
                 onAction(ToolbarAction.ExportBook(ExportFormat.XOPP))
                 onAction(ToolbarAction.ToggleMenu)
             }
-            DividerCentered()
-        }
-
-        MenuItem(stringResource(R.string.clean_all_strokes)) {
-            onAction(ToolbarAction.ClearAllStrokes)
-            onAction(ToolbarAction.ToggleMenu)
-        }
-        DividerCentered()
-
-        MenuItem(stringResource(R.string.change_background)) {
-            onAction(ToolbarAction.ToggleBackgroundSelector(true))
-            onAction(ToolbarAction.ToggleMenu)
-        }
-
-        MenuItem(stringResource(R.string.bug_report)) {
-            onAction(ToolbarAction.NavigateToBugReport)
-            onAction(ToolbarAction.ToggleMenu)
         }
     }
 }

@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
@@ -32,7 +31,6 @@ import com.ethran.notable.R
 import com.ethran.notable.data.datastore.BUTTON_SIZE
 import com.ethran.notable.data.datastore.GlobalAppSettings
 import com.ethran.notable.editor.utils.Eraser
-import com.ethran.notable.ui.convertDpToPixel
 
 @Composable
 fun EraserToolbarButton(
@@ -58,17 +56,19 @@ fun EraserToolbarButton(
         )
 
         if (isMenuOpen) {
+            val placement = toolbarPopupPlacement(context)
             Popup(
-                offset = IntOffset(0, convertDpToPixel(43.dp, context).toInt()),
+                offset = placement.offset,
                 onDismissRequest = {
                     onMenuOpenChange(false)
                 },
                 properties = PopupProperties(focusable = true),
-                alignment = Alignment.TopCenter
+                alignment = placement.alignment
             ) {
                 Column(
                     modifier = Modifier
-                        .padding(bottom = (BUTTON_SIZE + 5).dp) // For toolbar is located at the button,
+                        // For toolbar located at the bottom: keep the popup above the bar
+                        .padding(bottom = if (isToolbarVertical()) 0.dp else (BUTTON_SIZE + 5).dp)
                         .background(Color.White)
                         .border(1.dp, Color.Black)
                         .height(IntrinsicSize.Max)

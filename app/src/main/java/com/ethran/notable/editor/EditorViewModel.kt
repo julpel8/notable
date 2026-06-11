@@ -542,6 +542,13 @@ class EditorViewModel @Inject constructor(
                 dailyDate = dailyDate
             )
         }
+
+        // Today's template goes stale while cached (events added, tasks file
+        // updated): silently re-render it on every open. Other days keep the
+        // cache; the manual refresh button covers them.
+        if (dailyDate != null && LocalDate.parse(dailyDate) == LocalDate.now()) {
+            refreshDailyTemplate(pageId)
+        }
     }
 
     private fun saveToolbarState() {
@@ -674,11 +681,15 @@ class EditorViewModel @Inject constructor(
      */
     private fun handleRefreshDailyTemplate() {
         viewModelScope.launch(Dispatchers.IO) {
-            pageDataManager.invalidateBackground(currentPageId)
-            pageDataManager.refreshPageFromDb(currentPageId)
-            CanvasEventBus.forceUpdate.emit(null)
+            refreshDailyTemplate(currentPageId)
             showHint("Template refreshed", 1500)
         }
+    }
+
+    private suspend fun refreshDailyTemplate(pageId: String) {
+        pageDataManager.invalidateBackground(pageId)
+        pageDataManager.refreshPageFromDb(pageId)
+        CanvasEventBus.forceUpdate.emit(null)
     }
 
     /**

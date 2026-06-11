@@ -31,7 +31,6 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
@@ -39,7 +38,6 @@ import com.ethran.notable.data.datastore.AppSettings
 import com.ethran.notable.data.datastore.BUTTON_SIZE
 import com.ethran.notable.data.datastore.GlobalAppSettings
 import com.ethran.notable.editor.utils.PenSetting
-import com.ethran.notable.ui.convertDpToPixel
 import kotlin.math.roundToInt
 
 
@@ -58,18 +56,20 @@ fun StrokeMenu(
             .background(Color.White)
             .border(1.dp, Color.Black)
         else Modifier
+    val placement = toolbarPopupPlacement(context)
     Popup(
-        offset = IntOffset(0, convertDpToPixel(43.dp, context).toInt()),
+        offset = placement.offset,
         onDismissRequest = { onClose() },
         properties = PopupProperties(focusable = true),
-        alignment = Alignment.TopCenter
+        alignment = placement.alignment
     ) {
 
         Column(
             modifier = columnModifier
                 .width(IntrinsicSize.Min) // match the widest child (ColorPicker Row)
                 .padding(horizontal = 10.dp, vertical = 8.dp)
-                .padding(bottom = (BUTTON_SIZE + 5).dp) // For toolbar is located at the button,
+                // For toolbar located at the bottom: keep the popup above the bar
+                .padding(bottom = if (isToolbarVertical()) 0.dp else (BUTTON_SIZE + 5).dp)
         ) {
 
             val listOfColors = if (GlobalAppSettings.current.monochromeMode) listOf(

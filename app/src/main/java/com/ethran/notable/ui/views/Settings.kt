@@ -385,11 +385,10 @@ fun SettingsPreviewGeneral() {
 fun SettingsPreviewGestures() {
     val dummyRows = listOf(
         GestureRowModel(
-            R.string.gestures_double_tap_action, null, AppSettings.defaultDoubleTapAction
+            R.string.gestures_double_tap_action, null
         ) { }, GestureRowModel(
             R.string.gestures_two_finger_tap_action,
-            AppSettings.GestureAction.Undo,
-            AppSettings.defaultTwoFingerTapAction
+            AppSettings.GestureAction.Undo
         ) { })
     InkaTheme {
         SettingsContent(

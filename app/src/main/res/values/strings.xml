@@ -1,8 +1,13 @@
 <resources>
     <string name="app_name" translatable="false">Notable</string>
-    <string name="home_quick_pages">Quick pages</string>
-    <string name="home_notebooks">Notebooks</string>
     <string name="home_add_new_folder">Add new folder</string>
+    <string name="home_open_journal">Today\'s journal</string>
+    <string name="pages_add_page">+ Add page</string>
+    <string name="background_daily_description">Calendar template: shows the events and tasks of the chosen day, like a journal page. Strokes already on the page are kept.</string>
+    <string name="background_daily_applied">Applied — date: %1$s</string>
+    <string name="background_daily_apply">Use calendar template for %1$s</string>
+    <string name="grant_calendar_access_hint">Journal: show calendar events on daily pages</string>
+    <string name="grant_calendar_access">Grant access</string>
     <string name="home_new_folder">New Folder</string>
     <string name="home_view_name">Library</string>
     <string name="settings_title">Settings</string>
@@ -41,6 +46,10 @@
     <string name="work_in_progress">(work in progress)</string>
     <string name="toolbar_position_top">Top</string>
     <string name="toolbar_position_bottom">Bottom</string>
+    <string name="toolbar_position_left">Left</string>
+    <string name="toolbar_position_right">Right</string>
+    <string name="split_toolbar">Split toolbar (tools / actions)</string>
+    <string name="toolbar_position_actions">Actions toolbar position</string>
     <string name="sponsor_button_text">Sponsor</string>
     <string name="gesture_action_undo">Undo</string>
     <string name="gesture_action_redo">Redo</string>

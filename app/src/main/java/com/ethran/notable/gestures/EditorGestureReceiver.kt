@@ -39,7 +39,6 @@ fun EditorGestureReceiver(
     controlTower: EditorControlTower,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val appSettings = remember { GlobalAppSettings.current }
     var crossPosition by remember { mutableStateOf<IntOffset?>(null) }
     var rectangleBounds by remember { mutableStateOf<Rect?>(null) }
     val view = LocalView.current
@@ -152,7 +151,7 @@ fun EditorGestureReceiver(
                         when (gestureState.gestureMode) {
                             GestureMode.Selection -> {
                                 resolveGesture(
-                                    settings = appSettings,
+                                    settings = GlobalAppSettings.current,
                                     default = AppSettings.defaultHoldAction,
                                     override = AppSettings::holdAction,
                                     scope = coroutineScope,
@@ -209,7 +208,7 @@ fun EditorGestureReceiver(
                                             return@withTimeoutOrNull null
                                         }
                                         resolveGesture(
-                                            settings = appSettings,
+                                            settings = GlobalAppSettings.current,
                                             default = AppSettings.defaultDoubleTapAction,
                                             override = AppSettings::doubleTapAction,
                                             scope = coroutineScope,
@@ -223,7 +222,7 @@ fun EditorGestureReceiver(
                             log.v("Two finger tap")
                             if (gestureState.isTwoFingersTap()) {
                                 resolveGesture(
-                                    settings = appSettings,
+                                    settings = GlobalAppSettings.current,
                                     default = AppSettings.defaultTwoFingerTapAction,
                                     override = AppSettings::twoFingerTapAction,
                                     scope = coroutineScope,
@@ -232,7 +231,7 @@ fun EditorGestureReceiver(
                             }
                             // zoom gesture
                             val zoomDelta = gestureState.getPinchDrag()
-                            if (!appSettings.continuousZoom && abs(zoomDelta) > PINCH_ZOOM_THRESHOLD) {
+                            if (!GlobalAppSettings.current.continuousZoom && abs(zoomDelta) > PINCH_ZOOM_THRESHOLD) {
                                 controlTower.onPinchToZoom(zoomDelta, Offset(0f, 0f))
                                 log.d("Discrete zoom: $zoomDelta")
                             }
@@ -247,7 +246,7 @@ fun EditorGestureReceiver(
                         if (gestureState.gestureMode == GestureMode.Normal) {
                             if (horizontalDrag < -SWIPE_THRESHOLD)
                                 resolveGesture(
-                                    settings = appSettings,
+                                    settings = GlobalAppSettings.current,
                                     default = if (gestureState.getInputCount() == 1) AppSettings.defaultSwipeLeftAction else AppSettings.defaultTwoFingerSwipeLeftAction,
                                     override = if (gestureState.getInputCount() == 1) AppSettings::swipeLeftAction else AppSettings::twoFingerSwipeLeftAction,
                                     scope = coroutineScope,
@@ -255,7 +254,7 @@ fun EditorGestureReceiver(
                                 )
                             else if (horizontalDrag > SWIPE_THRESHOLD)
                                 resolveGesture(
-                                    settings = appSettings,
+                                    settings = GlobalAppSettings.current,
                                     default = if (gestureState.getInputCount() == 1) AppSettings.defaultSwipeRightAction else AppSettings.defaultTwoFingerSwipeRightAction,
                                     override = if (gestureState.getInputCount() == 1) AppSettings::swipeRightAction else AppSettings::twoFingerSwipeRightAction,
                                     scope = coroutineScope,

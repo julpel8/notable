@@ -27,7 +27,6 @@ fun GesturesSettings(
             GestureSelectorRow(
                 title = stringResource(config.titleRes),
                 currentAction = config.currentValue,
-                defaultAction = config.defaultValue,
                 onActionSelected = { action -> config.onUpdate(action) },
                 availableGestures = availableGestures
             )
@@ -45,7 +44,6 @@ fun GesturesSettings(
 fun GestureSelectorRow(
     title: String,
     currentAction: AppSettings.GestureAction?,
-    defaultAction: AppSettings.GestureAction,
     onActionSelected: (AppSettings.GestureAction?) -> Unit,
     availableGestures: List<Pair<AppSettings.GestureAction?, Any>>
 ) {
@@ -59,10 +57,12 @@ fun GestureSelectorRow(
         action to label
     }
 
+    // null is a real value here ("None"): do not coalesce it to the default,
+    // otherwise selecting None silently displays the default action again.
     SelectorRow(
         label = title,
         options = options,
-        value = currentAction ?: defaultAction,
+        value = currentAction,
         onValueChange = onActionSelected
     )
 }

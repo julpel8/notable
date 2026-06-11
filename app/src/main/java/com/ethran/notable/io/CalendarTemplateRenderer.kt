@@ -38,6 +38,10 @@ class CalendarTemplateRenderer {
         widthPx: Int,
         heightPx: Int,
         scale: Float,
+        // Keep the template's content clear of a docked toolbar: the caller
+        // passes the toolbar thickness on the side it is docked (0 otherwise).
+        leftInsetPx: Float = 0f,
+        topInsetPx: Float = 0f,
     ): Bitmap {
         // Cap the render scale: beyond 2x the e-ink display gains nothing.
         val s = scale.coerceIn(1f, 2f)
@@ -46,9 +50,11 @@ class CalendarTemplateRenderer {
         // All coordinates below are in page units.
         canvas.scale(s, s)
         canvas.drawColor(Color.WHITE)
+        // Shift content so the toolbar does not cover the banner / events column.
+        canvas.translate(leftInsetPx, topInsetPx)
 
-        val width = widthPx.toFloat()
-        val height = heightPx.toFloat()
+        val width = widthPx.toFloat() - leftInsetPx
+        val height = heightPx.toFloat() - topInsetPx
         val margin = 24f
         val columnWidth = width / 3f
 

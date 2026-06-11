@@ -6,11 +6,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import com.ethran.notable.data.AppRepository
+import com.ethran.notable.data.JournalRepository
 import com.ethran.notable.data.PageDataManager
 import com.ethran.notable.data.datastore.GlobalAppSettings
 import com.ethran.notable.data.db.Folder
 import com.ethran.notable.data.db.Notebook
-import com.ethran.notable.data.db.Page
 import com.ethran.notable.data.model.BackgroundType
 import com.ethran.notable.io.ExportEngine
 import com.ethran.notable.io.ImportEngine
@@ -34,6 +34,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class LibraryUiState(
@@ -42,21 +44,20 @@ data class LibraryUiState(
     val isImporting: Boolean = false,
     val breadcrumbFolders: List<Folder> = emptyList(),
     val folders: List<Folder> = emptyList(),
-    val books: List<Notebook> = emptyList(),
-    val singlePages: List<Page> = emptyList()
+    val books: List<Notebook> = emptyList()
 )
 
 // Private data class for clean Flow combining
 private data class LibraryDatabaseState(
     val folders: List<Folder> = emptyList(),
-    val books: List<Notebook> = emptyList(),
-    val singlePages: List<Page> = emptyList()
+    val books: List<Notebook> = emptyList()
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     val appRepository: AppRepository,
+    private val journalRepository: JournalRepository,
     private val appEventBus: AppEventBus,
     val importEngine: ImportEngine,
     val exportEngine: ExportEngine,
@@ -69,7 +70,6 @@ class LibraryViewModel @Inject constructor(
 
     private val bookRepository = appRepository.bookRepository
     private val folderRepository = appRepository.folderRepository
-    private val pageRepository = appRepository.pageRepository
 
     private val _folderId = MutableStateFlow<String?>(null)
     private val _isImporting = MutableStateFlow(false)
@@ -83,14 +83,12 @@ class LibraryViewModel @Inject constructor(
         _folderId.flatMapLatest { id -> folderRepository.getAllInFolder(id).asFlow() }
     private val _booksFlow =
         _folderId.flatMapLatest { id -> bookRepository.getAllInFolder(id).asFlow() }
-    private val _singlePagesFlow =
-        _folderId.flatMapLatest { id -> pageRepository.getSinglePagesInFolder(id).asFlow() }
 
-    // 2. Group the 3 database flows semantically
+    // 2. Group the database flows semantically
     private val _dbDataFlow = combine(
-        _foldersFlow, _booksFlow, _singlePagesFlow
-    ) { folders, books, pages ->
-        LibraryDatabaseState(folders, books, pages)
+        _foldersFlow, _booksFlow
+    ) { folders, books ->
+        LibraryDatabaseState(folders, books)
     }
 
     // 3. Expose the final UI State
@@ -103,8 +101,7 @@ class LibraryViewModel @Inject constructor(
             isImporting = isImporting,
             breadcrumbFolders = breadcrumbs,
             folders = dbData.folders,
-            books = dbData.books,
-            singlePages = dbData.singlePages
+            books = dbData.books
         )
     }.stateIn(
         scope = viewModelScope,
@@ -122,6 +119,28 @@ class LibraryViewModel @Inject constructor(
 
     fun onPreviewRequested(pageId: String) {
         thumbnailBackfillQueue.enqueue(listOf(pageId))
+    }
+
+    /**
+     * Opens today's daily journal page, creating it (and the Journal folder) on
+     * first use. [onReady] is invoked on the main thread with the page id so the
+     * caller can navigate to the editor.
+     */
+    fun openTodayJournal(onReady: (String) -> Unit) {
+        viewModelScope.launch {
+            val pageId = runCatching {
+                withContext(Dispatchers.IO) {
+                    journalRepository.getOrCreateDailyPage(LocalDate.now()).pageId
+                }
+            }.getOrNull()
+            if (pageId != null) {
+                onReady(pageId)
+            } else {
+                snackDispatcher.showOrUpdateSnack(
+                    SnackConf(text = "Could not open today's journal", duration = 3000)
+                )
+            }
+        }
     }
 
     fun loadFolder(folderId: String?) {

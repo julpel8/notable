@@ -35,7 +35,6 @@ import javax.inject.Inject
 data class GestureRowModel(
     val titleRes: Int,
     val currentValue: AppSettings.GestureAction?,
-    val defaultValue: AppSettings.GestureAction,
     val onUpdate: (AppSettings.GestureAction?) -> Unit
 )
 
@@ -291,33 +290,27 @@ class SettingsViewModel @Inject constructor(
     fun getGestureRows(): List<GestureRowModel> = listOf(
         GestureRowModel(
             R.string.gestures_double_tap_action,
-            settings.doubleTapAction,
-            AppSettings.defaultDoubleTapAction
+            settings.doubleTapAction
         ) { a -> updateSettings(settings.copy(doubleTapAction = a)) },
         GestureRowModel(
             (R.string.gestures_two_finger_tap_action),
-            settings.twoFingerTapAction,
-            AppSettings.defaultTwoFingerTapAction,
+            settings.twoFingerTapAction
         ) { a -> updateSettings(settings.copy(twoFingerTapAction = a)) },
         GestureRowModel(
             (R.string.gestures_swipe_left_action),
-            settings.swipeLeftAction,
-            AppSettings.defaultSwipeLeftAction
+            settings.swipeLeftAction
         ) { a -> updateSettings(settings.copy(swipeLeftAction = a)) },
         GestureRowModel(
             (R.string.gestures_swipe_right_action),
-            settings.swipeRightAction,
-            AppSettings.defaultSwipeRightAction
+            settings.swipeRightAction
         ) { a -> updateSettings(settings.copy(swipeRightAction = a)) },
         GestureRowModel(
             (R.string.gestures_two_finger_swipe_left_action),
-            settings.twoFingerSwipeLeftAction,
-            AppSettings.defaultTwoFingerSwipeLeftAction
+            settings.twoFingerSwipeLeftAction
         ) { a -> updateSettings(settings.copy(twoFingerSwipeLeftAction = a)) },
         GestureRowModel(
             R.string.gestures_two_finger_swipe_right_action,
-            settings.twoFingerSwipeRightAction,
-            AppSettings.defaultTwoFingerSwipeRightAction
+            settings.twoFingerSwipeRightAction
         ) { a -> updateSettings(settings.copy(twoFingerSwipeRightAction = a)) },
     )
 

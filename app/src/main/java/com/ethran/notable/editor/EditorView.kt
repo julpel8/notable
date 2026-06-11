@@ -1,24 +1,34 @@
 package com.ethran.notable.editor
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ethran.notable.data.datastore.AppSettings
+import com.ethran.notable.data.datastore.BUTTON_SIZE
+import com.ethran.notable.data.datastore.GlobalAppSettings
 import com.ethran.notable.editor.canvas.CanvasEventBus
 import com.ethran.notable.editor.state.ClipboardStore
 import com.ethran.notable.editor.ui.EditorSurface
@@ -32,6 +42,7 @@ import com.ethran.notable.ui.LocalSnackContext
 import com.ethran.notable.ui.SnackConf
 import com.ethran.notable.ui.convertDpToPixel
 import com.ethran.notable.ui.theme.InkaTheme
+import com.ethran.notable.utils.hasCalendarPermission
 import com.ethran.notable.utils.isToday
 import io.shipbook.shipbooksdk.ShipBook
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -203,6 +214,24 @@ fun EditorView(
 
         val toolbarState by viewModel.toolbarState.collectAsStateWithLifecycle()
 
+        // Daily journal: the template needs READ_CALENDAR to print the day's
+        // events. Ask once per editor session when a daily page is opened
+        // without it, then redraw the template so the notice disappears.
+        val calendarPermissionLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (granted) viewModel.onToolbarAction(ToolbarAction.RefreshDailyTemplate)
+        }
+        var calendarPermissionAsked by remember { mutableStateOf(false) }
+        LaunchedEffect(toolbarState.dailyDate) {
+            if (toolbarState.dailyDate != null && !calendarPermissionAsked
+                && !hasCalendarPermission(context)
+            ) {
+                calendarPermissionAsked = true
+                calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
+            }
+        }
+
         // Daily journal: when the device resumes on a later day than the open
         // daily page (sleep across midnight, reboot…), offer to jump to today.
         val lifecycleOwner = LocalLifecycleOwner.current
@@ -276,6 +305,14 @@ fun EditorView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight()
+                    // Keep the indicator visible when a toolbar is docked right
+                    .padding(
+                        end = with(GlobalAppSettings.current) {
+                            if (toolbarPosition == AppSettings.Position.Right ||
+                                (splitToolbar && actionToolbarPosition == AppSettings.Position.Right)
+                            ) (BUTTON_SIZE + 1).dp else 0.dp
+                        }
+                    )
             ) {
                 Spacer(modifier = Modifier.weight(1f))
                 ScrollIndicator(viewModel = viewModel, page = page)

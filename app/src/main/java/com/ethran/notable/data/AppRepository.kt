@@ -129,23 +129,6 @@ class AppRepository @Inject constructor(
         return book.getPageIndex(pageId)
     }
 
-    suspend fun createNewQuickPage(parentFolderId: String? = null): String? {
-        val page = Page(
-            notebookId = null,
-            background = GlobalAppSettings.current.defaultNativeTemplate,
-            backgroundType = BackgroundType.Native.key,
-            parentFolderId = parentFolderId
-        )
-        try {
-            pageRepository.create(page)
-        } catch (e: android.database.sqlite.SQLiteConstraintException) {
-            log.e("Failed to create page: ${e.message}")
-            // it should return something like a result
-            return null
-        }
-        return page.id
-    }
-
     suspend fun newPageInBook(notebookId: String, index: Int = 0): String? {
         try {
             val book = bookRepository.getById(notebookId)

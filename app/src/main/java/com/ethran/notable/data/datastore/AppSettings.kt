@@ -30,6 +30,11 @@ data class AppSettings(
     val neoTools: Boolean = false,
     val scribbleToEraseEnabled: Boolean = false,
     val toolbarPosition: Position = Position.Top,
+    // When true the toolbar is split: drawing tools stay at [toolbarPosition]
+    // and the action/navigation buttons move to [actionToolbarPosition]. If both
+    // positions are equal the two halves render merged (same as not split).
+    val splitToolbar: Boolean = false,
+    val actionToolbarPosition: Position = Position.Bottom,
     val smoothScroll: Boolean = true,
     val continuousZoom: Boolean = false,
     val continuousStrokeSlider: Boolean = false,
@@ -79,6 +84,6 @@ data class AppSettings(
     }
 
     enum class Position {
-        Top, Bottom, // Left,Right,
+        Top, Bottom, Left, Right,
     }
 }

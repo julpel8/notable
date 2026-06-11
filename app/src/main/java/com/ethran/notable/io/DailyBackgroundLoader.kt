@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.os.Environment
 import com.ethran.notable.data.CalendarRepository
 import com.ethran.notable.data.datastore.AppSettings
+import com.ethran.notable.data.datastore.BUTTON_SIZE
 import com.ethran.notable.data.datastore.GlobalAppSettings
 import com.ethran.notable.data.model.TodayTask
 import com.ethran.notable.data.model.parseTodayTasks
@@ -55,12 +56,25 @@ class DailyBackgroundLoader(private val context: Context) {
             emptyList()
         }
 
+        // Reserve a margin on whichever edge a toolbar is docked, so it does
+        // not sit on top of the banner (Top) or the events column (Left). When
+        // the toolbar is split both halves are considered.
+        val barPx = BUTTON_SIZE * context.resources.displayMetrics.density + 6f
+        val settings = GlobalAppSettings.current
+        val positions = if (settings.splitToolbar)
+            setOf(settings.toolbarPosition, settings.actionToolbarPosition)
+        else setOf(settings.toolbarPosition)
+        val leftInset = if (AppSettings.Position.Left in positions) barPx else 0f
+        val topInset = if (AppSettings.Position.Top in positions) barPx else 0f
+
         return CalendarTemplateRenderer().render(
             dateIso,
             CalendarTemplateRenderer.TemplateData(events = events, tasks = tasks),
             widthPx,
             heightPx,
             scale,
+            leftInsetPx = leftInset,
+            topInsetPx = topInset,
         )
     }
 
