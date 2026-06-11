@@ -17,6 +17,7 @@ import com.ethran.notable.editor.EditorDestination
 import com.ethran.notable.editor.canvas.CanvasEventBus
 import com.ethran.notable.editor.utils.refreshScreen
 import com.ethran.notable.ui.views.BugReportDestination
+import com.ethran.notable.ui.views.DiagnosticsDestination
 import com.ethran.notable.ui.views.LibraryDestination
 import com.ethran.notable.ui.views.PagesDestination
 import com.ethran.notable.ui.views.SystemInformationDestination
@@ -33,11 +34,14 @@ private val log = ShipBook.getLogger("NotableAppState")
 @Composable
 fun rememberNotableAppState(
     navController: NavHostController = rememberNavController(),
-    coroutineScope: CoroutineScope = rememberCoroutineScope()
+    coroutineScope: CoroutineScope = rememberCoroutineScope(),
+    initialDailyPageId: String? = null
 ): NotableNavigator {
     val context = LocalContext.current
-    return remember(navController, context, coroutineScope) {
-        NotableNavigator(navController, hasFilePermission(context), coroutineScope)
+    return remember(navController, context, coroutineScope, initialDailyPageId) {
+        NotableNavigator(
+            navController, hasFilePermission(context), coroutineScope, initialDailyPageId
+        )
     }
 }
 
@@ -45,15 +49,24 @@ fun rememberNotableAppState(
 class NotableNavigator(
     val navController: NavHostController,
     private val hasFilePermission: Boolean,
-    private val coroutineScope: CoroutineScope
+    private val coroutineScope: CoroutineScope,
+    private val initialDailyPageId: String? = null
 ) {
     var isQuickNavOpen by mutableStateOf(false)
     var currentPageId by mutableStateOf<String?>(null)
 
 
     val startDestination: String
-        get() = if (GlobalAppSettings.current.showWelcome || !hasFilePermission) WelcomeDestination.route
-        else LibraryDestination.route
+        get() = when {
+            GlobalAppSettings.current.showWelcome || !hasFilePermission ->
+                WelcomeDestination.route
+
+            // Daily journal: open straight on today's page (created in MainActivity init)
+            initialDailyPageId != null ->
+                EditorDestination.createRoute(initialDailyPageId, null)
+
+            else -> LibraryDestination.route
+        }
 
     val quickNavSourcePageId: String?
         get() = navController.currentBackStackEntry?.savedStateHandle?.get<String>("quickNavSourcePageId")
@@ -127,6 +140,10 @@ class NotableNavigator(
 
     fun goToSystemInfo() {
         navController.navigate(SystemInformationDestination.route)
+    }
+
+    fun goToDiagnostics() {
+        navController.navigate(DiagnosticsDestination.route)
     }
 
     fun goToBugReport(){

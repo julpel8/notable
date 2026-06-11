@@ -7,6 +7,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ethran.notable.data.AppRepository
+import com.ethran.notable.data.JournalRepository
 import com.ethran.notable.data.PageDataManager
 import com.ethran.notable.data.copyImageToDatabase
 import com.ethran.notable.data.datastore.EditorSettingCacheManager
@@ -44,6 +45,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.util.Date
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -78,6 +80,10 @@ data class ToolbarUiState(
     val isBackgroundSelectorModalOpen: Boolean = false,
     val showResetView: Boolean = false,
 
+    // Daily journal: non-null when the open page is a daily page (ISO date)
+    val dailyDate: String? = null,
+    val isDatePickerOpen: Boolean = false,
+
     // Canvas / drawing
     val mode: Mode = Mode.Draw,
     val pen: Pen = Pen.BALLPEN,
@@ -92,7 +98,7 @@ data class ToolbarUiState(
     val isDrawingAllowed: Boolean
         get() = !isSelectionActive &&
                 !(isMenuOpen || isStrokeSelectionOpen || isBackgroundSelectorModalOpen)
-                && !isQuickNavOpen
+                && !isQuickNavOpen && !isDatePickerOpen
 }
 
 
@@ -129,6 +135,14 @@ sealed class ToolbarAction {
 
     object CloseAllMenus : ToolbarAction()
     data class UpdateQuickNavOpen(val isOpen: Boolean) : ToolbarAction()
+
+    // Daily journal navigation
+    object PreviousDay : ToolbarAction()
+    object NextDay : ToolbarAction()
+    object GoToToday : ToolbarAction()
+    data class JumpToDate(val dateIso: String) : ToolbarAction()
+    data class ToggleDatePicker(val isOpen: Boolean) : ToolbarAction()
+    object RefreshDailyTemplate : ToolbarAction()
 }
 
 
@@ -164,6 +178,7 @@ sealed class EditorUiEvent {
 class EditorViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val appRepository: AppRepository,
+    private val journalRepository: JournalRepository,
     private val editorSettingCacheManager: EditorSettingCacheManager,
     private val exportEngine: ExportEngine,
     val pageDataManager: PageDataManager,
@@ -304,6 +319,17 @@ class EditorViewModel @Inject constructor(
                 _toolbarState.update { it.copy(isQuickNavOpen = action.isOpen) }
                 updateDrawingState()
             }
+
+            ToolbarAction.PreviousDay -> shiftDailyPage(-1)
+            ToolbarAction.NextDay -> shiftDailyPage(1)
+            ToolbarAction.GoToToday -> goToDay(LocalDate.now())
+            is ToolbarAction.JumpToDate -> goToDay(LocalDate.parse(action.dateIso))
+            is ToolbarAction.ToggleDatePicker -> {
+                _toolbarState.update { it.copy(isDatePickerOpen = action.isOpen) }
+//                updateDrawingState() // on focus change is doing this
+            }
+
+            ToolbarAction.RefreshDailyTemplate -> handleRefreshDailyTemplate()
         }
     }
 
@@ -501,6 +527,8 @@ class EditorViewModel @Inject constructor(
             else -> 0
         }
 
+        val dailyDate = journalRepository.getByPageId(pageId)?.date
+
         _toolbarState.update {
             it.copy(
                 notebookId = bookId,
@@ -510,7 +538,8 @@ class EditorViewModel @Inject constructor(
                 currentPageNumber = pageIndex,
                 backgroundType = page.backgroundType,
                 backgroundPath = page.background,
-                backgroundPageNumber = bgPageNumber
+                backgroundPageNumber = bgPageNumber,
+                dailyDate = dailyDate
             )
         }
     }
@@ -627,6 +656,50 @@ class EditorViewModel @Inject constructor(
 
             // Clean the selection state
             selectionState.reset()
+        }
+    }
+
+    // --------------------------------------------------------
+    // Daily journal navigation
+    // --------------------------------------------------------
+
+    private fun shiftDailyPage(deltaDays: Long) {
+        val current = _toolbarState.value.dailyDate ?: return
+        goToDay(LocalDate.parse(current).plusDays(deltaDays))
+    }
+
+    /**
+     * Drops the cached template bitmap and forces a full redraw: the next
+     * render re-queries the calendar and today-tasks.json.
+     */
+    private fun handleRefreshDailyTemplate() {
+        viewModelScope.launch(Dispatchers.IO) {
+            pageDataManager.invalidateBackground(currentPageId)
+            pageDataManager.refreshPageFromDb(currentPageId)
+            CanvasEventBus.forceUpdate.emit(null)
+            showHint("Template refreshed", 1500)
+        }
+    }
+
+    /**
+     * Opens (creating if needed) the daily page for [target]. Reuses the
+     * in-editor page-switch flow, then reloads the toolbar state because
+     * updateOpenedPage only patches the pageId.
+     */
+    private fun goToDay(target: LocalDate) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _toolbarState.update { it.copy(isDatePickerOpen = false) }
+            if (_toolbarState.value.dailyDate == target.toString()) return@launch
+
+            try {
+                val dailyPage = journalRepository.getOrCreateDailyPage(target)
+                updateOpenedPage(dailyPage.pageId)
+                loadToolbarState(null, dailyPage.pageId)
+                selectionState.reset()
+            } catch (e: Exception) {
+                log.e("goToDay($target) failed: ${e.message}")
+                showHint("Could not open page for $target", 3000)
+            }
         }
     }
 

@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.ethran.notable.R
 import com.ethran.notable.data.datastore.AppSettings
+import com.ethran.notable.ui.views.EInkTextField
 
 
 @Composable
@@ -92,5 +93,19 @@ fun GeneralSettings(
             onToggle = { isChecked ->
                 onSettingsChange(settings.copy(visualizePdfPagination = isChecked))
             })
+
+        SettingToggleRow(
+            label = stringResource(R.string.daily_journal_enabled),
+            value = settings.dailyJournalEnabled,
+            onToggle = { isChecked ->
+                onSettingsChange(settings.copy(dailyJournalEnabled = isChecked))
+            })
+
+        EInkTextField(
+            label = stringResource(R.string.journal_sync_folder_label),
+            value = settings.journalSyncFolder,
+            onValueChange = { onSettingsChange(settings.copy(journalSyncFolder = it)) },
+            placeholder = stringResource(R.string.journal_sync_folder_placeholder)
+        )
     }
 }

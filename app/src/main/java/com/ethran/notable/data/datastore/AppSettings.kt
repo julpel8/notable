@@ -37,6 +37,12 @@ data class AppSettings(
     val paginatePdf: Boolean = true,
     val visualizePdfPagination: Boolean = false,
 
+    // Daily journal
+    val dailyJournalEnabled: Boolean = true,
+    // Folder shared with Syncthing: today-tasks.json is read from here and the
+    // Markdown export (later phase) will be written here. Blank = Documents/notable.
+    val journalSyncFolder: String = "",
+
     // Gestures
     val doubleTapAction: GestureAction? = defaultDoubleTapAction,
     val twoFingerTapAction: GestureAction? = defaultTwoFingerTapAction,

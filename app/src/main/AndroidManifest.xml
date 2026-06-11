@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <!-- Package visibility (targetSdk 30+): required to bind the Boox firmware HWR service -->
+    <queries>
+        <package android:name="com.onyx.android.ksync" />
+    </queries>
+
     <application
         android:name=".NotableApp"
         android:allowBackup="true"

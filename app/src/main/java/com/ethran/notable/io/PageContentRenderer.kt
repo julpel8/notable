@@ -78,7 +78,9 @@ class PageContentRenderer @Inject constructor(
                 appRepository.getPageNumber(bookId, data.page.id)
             }
             data.page.getBackgroundType().resolveForExport(pageNumber)
-        } ?: Native
+        // Standalone pages keep their real background type (daily template,
+        // image…); resolveForExport(null) only downgrades AutoPdf to Native.
+        } ?: data.page.getBackgroundType().resolveForExport(null)
     }
 
     suspend fun drawPage(
@@ -108,6 +110,10 @@ class PageContentRenderer @Inject constructor(
                 }
 
                 Native -> null
+
+                BackgroundType.Daily -> DailyBackgroundLoader(context).load(
+                    data.page.background, SCREEN_WIDTH, SCREEN_HEIGHT, scaleFactor
+                )
             }
         }
 

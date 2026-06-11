@@ -9,7 +9,8 @@ fun DebugSettings(
     settings: AppSettings,
     onSettingsChange: (AppSettings) -> Unit,
     goToWelcome: () -> Unit,
-    goToSystemInfo: () -> Unit
+    goToSystemInfo: () -> Unit,
+    goToDiagnostics: () -> Unit = {}
 ) {
     Column {
         SettingToggleRow(
@@ -24,6 +25,13 @@ fun DebugSettings(
             value = false,
             onToggle = {
                 goToSystemInfo()
+            }
+        )
+        SettingToggleRow(
+            label = "Diagnostics (handwriting recognition / calendar)",
+            value = false,
+            onToggle = {
+                goToDiagnostics()
             }
         )
         SettingToggleRow(

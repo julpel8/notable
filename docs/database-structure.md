@@ -30,6 +30,11 @@ Contents:
   - Referenced by `Page.notebookId` (grouping construct; details in code).
 - Image https://github.com/Ethran/notable/blob/main/app/src/main/java/com/ethran/notable/data/db/Image.kt
   - Raster asset placed on a page (file defines its own fields in code).
+- DailyPage (`app/src/main/java/com/ethran/notable/data/db/DailyPage.kt`)
+  - Daily journal mapping: one row per local calendar day. Fields: `date` (String PK, ISO `yyyy-MM-dd`),
+    `pageId` (indexed FK to Page, ON DELETE CASCADE), `exportedAt` (nullable Date, reserved for the
+    Markdown export pipeline). The referenced Page is standalone (`notebookId = NULL`) with
+    `backgroundType = "daily"` and `background` holding the same ISO date.
 
 ---
 

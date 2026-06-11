@@ -24,9 +24,10 @@ fun NotableApp(
     exportEngine: ExportEngine,
     snackState: SnackState,
     snackDispatcher: SnackDispatcher,
-    appRepository: AppRepository
+    appRepository: AppRepository,
+    initialDailyPageId: String? = null
 ) {
-    val appNavState = rememberNotableAppState()
+    val appNavState = rememberNotableAppState(initialDailyPageId = initialDailyPageId)
     Box(
         Modifier
             .background(Color.White)

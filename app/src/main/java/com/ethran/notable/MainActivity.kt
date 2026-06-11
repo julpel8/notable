@@ -28,6 +28,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.ethran.notable.data.AppRepository
+import com.ethran.notable.data.JournalRepository
 import com.ethran.notable.data.PageDataManager
 import com.ethran.notable.data.datastore.AppSettings
 import com.ethran.notable.data.datastore.EditorSettingCacheManager
@@ -53,6 +54,7 @@ import io.shipbook.shipbooksdk.ShipBook
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import javax.inject.Inject
 
 
@@ -88,6 +90,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var syncScheduler: dagger.Lazy<SyncScheduler>
+
+    @Inject
+    lateinit var journalRepository: dagger.Lazy<JournalRepository>
 
     @Inject
     lateinit var snackDispatcher: SnackDispatcher
@@ -127,6 +132,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var isInitialized by remember { mutableStateOf(false) }
+            var initialDailyPageId by remember { mutableStateOf<String?>(null) }
 
             LaunchedEffect(Unit) {
                 if (hasFilePermission(this@MainActivity)) {
@@ -141,6 +147,18 @@ class MainActivity : ComponentActivity() {
                         pageDataManager.get()
                             .registerComponentCallbacks(this@MainActivity.applicationContext)
                         editorSettingCacheManager.get().init()
+
+                        // Daily journal: make sure today's page exists so the app
+                        // can open straight onto it. Any failure falls back to the
+                        // regular Library start.
+                        if (savedSettings.dailyJournalEnabled && !savedSettings.showWelcome) {
+                            initialDailyPageId = runCatching {
+                                journalRepository.get()
+                                    .getOrCreateDailyPage(LocalDate.now()).pageId
+                            }.onFailure {
+                                Log.w(TAG, "Could not open today's page: ${it.message}")
+                            }.getOrNull()
+                        }
                     }
                     restorePeriodicSyncSchedule()
                     // Trigger initial sync on app startup (fails silently if offline)
@@ -157,7 +175,8 @@ class MainActivity : ComponentActivity() {
                             exportEngine = exportEngineLazy.get(),
                             snackState = snackState,
                             snackDispatcher = snackDispatcher,
-                            appRepository = appRepositoryLazy.get()
+                            appRepository = appRepositoryLazy.get(),
+                            initialDailyPageId = initialDailyPageId
                         )
                     } else {
                         ShowInitMessage()

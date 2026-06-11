@@ -113,5 +113,59 @@ class MigrationTest {
         }
     }
 
+    @Test
+    @Throws(IOException::class)
+    fun migrate34To35_autoMigration_addsDailyPageTable() {
+        val dbName = "migration-test-34-35"
+
+        // 1. Create DB with version 34 schema and seed a standalone page
+        val db = helper.createDatabase(dbName, 34)
+        db.execSQL(
+            """
+            INSERT INTO Folder (id, title, createdAt, updatedAt)
+            VALUES ('journal-folder', 'Journal', 1620000000, 1620000000)
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO Page (
+                id, scroll, notebookId, background, backgroundType,
+                parentFolderId, createdAt, updatedAt
+            ) VALUES (
+                'daily-page-1', 0, NULL, '2026-06-10', 'daily',
+                'journal-folder', 1620000000, 1620000000
+            )
+            """.trimIndent()
+        )
+        db.close()
+
+        // 2. Reopen with version 35 to trigger AutoMigration(34, 35)
+        val migratedDb = Room.databaseBuilder(context, AppDatabase::class.java, dbName)
+            .build().openHelper.writableDatabase
+
+        // 3. Existing data is preserved
+        migratedDb.query(
+            "SELECT background, backgroundType FROM Page WHERE id = 'daily-page-1'"
+        ).use {
+            assertTrue(it.moveToFirst())
+            assertEquals("2026-06-10", it.getString(0))
+            assertEquals("daily", it.getString(1))
+        }
+
+        // 4. The new DailyPage table exists and enforces its FK (CASCADE)
+        migratedDb.execSQL(
+            "INSERT INTO DailyPage (date, pageId, exportedAt) VALUES ('2026-06-10', 'daily-page-1', NULL)"
+        )
+        migratedDb.query("SELECT pageId FROM DailyPage WHERE date = '2026-06-10'").use {
+            assertTrue(it.moveToFirst())
+            assertEquals("daily-page-1", it.getString(0))
+        }
+        migratedDb.execSQL("DELETE FROM Page WHERE id = 'daily-page-1'")
+        migratedDb.query("SELECT COUNT(*) FROM DailyPage").use {
+            assertTrue(it.moveToFirst())
+            assertEquals(0, it.getInt(0))
+        }
+    }
+
 
 }

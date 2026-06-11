@@ -16,6 +16,8 @@ import com.ethran.notable.editor.EditorView
 import com.ethran.notable.io.ExportEngine
 import com.ethran.notable.ui.views.BugReportDestination
 import com.ethran.notable.ui.views.BugReportScreen
+import com.ethran.notable.ui.views.DiagnosticsDestination
+import com.ethran.notable.ui.views.DiagnosticsView
 import com.ethran.notable.ui.views.Library
 import com.ethran.notable.ui.views.LibraryDestination
 import com.ethran.notable.ui.views.PagesDestination
@@ -82,6 +84,14 @@ fun NotableNavHost(
                 )
                 appNavigator.cleanCurrentPageId()
             }
+            composable(
+                route = DiagnosticsDestination.route,
+            ) {
+                DiagnosticsView(
+                    onBack = { appNavigator.goBack() },
+                )
+                appNavigator.cleanCurrentPageId()
+            }
 
             composable(
                 route = EditorDestination.routeWithArgs,
@@ -133,7 +143,8 @@ fun NotableNavHost(
                 SettingsView(
                     onBack = { appNavigator.goBack() },
                     goToWelcome = { appNavigator.goToWelcome() },
-                    goToSystemInfo = { appNavigator.goToSystemInfo() }
+                    goToSystemInfo = { appNavigator.goToSystemInfo() },
+                    goToDiagnostics = { appNavigator.goToDiagnostics() }
                 )
                 appNavigator.cleanCurrentPageId()
             }

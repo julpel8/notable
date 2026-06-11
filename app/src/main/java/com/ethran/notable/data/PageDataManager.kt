@@ -24,6 +24,7 @@ import com.ethran.notable.data.model.BackgroundType.ImageRepeating
 import com.ethran.notable.editor.canvas.CanvasEventBus
 import com.ethran.notable.editor.utils.saveHQPagePreview
 import com.ethran.notable.editor.utils.savePageThumbnail
+import com.ethran.notable.io.DailyBackgroundLoader
 import com.ethran.notable.io.IN_IGNORED
 import com.ethran.notable.io.fileObserverEventNames
 import com.ethran.notable.io.loadBackgroundBitmap
@@ -33,6 +34,7 @@ import com.ethran.notable.utils.logCallStack
 import com.onyx.android.sdk.data.reader.PageId
 import com.onyx.android.sdk.extension.isNotNull
 import com.onyx.android.sdk.extension.isNull
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.shipbook.shipbooksdk.ShipBook
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,10 +55,17 @@ import kotlin.math.max
 
 
 // Save bitmap, to avoid loading from disk every time.
-data class CachedBackground(val path: String, val pageNumber: Int, val scale: Float) {
+// The loader defaults to reading from disk; dynamic backgrounds (daily
+// template) inject their own renderer instead.
+data class CachedBackground(
+    val path: String,
+    val pageNumber: Int,
+    val scale: Float,
+    private val loader: (String, Int, Float) -> Bitmap? = ::loadBackgroundBitmap
+) {
     val id: String = keyOf(path, pageNumber)
 
-    var bitmap: Bitmap? = loadBackgroundBitmap(path, pageNumber, scale)
+    var bitmap: Bitmap? = loader(path, pageNumber, scale)
     fun matches(filePath: String, pageNum: Int, targetScale: Float): Boolean {
         return path == filePath && pageNumber == pageNum && scale >= targetScale // Consider valid if our scale is larger
     }
@@ -73,6 +82,7 @@ data class CachedBackground(val path: String, val pageNumber: Int, val scale: Fl
 // Cache manager companion object
 @Singleton
 class PageDataManager @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val appRepository: AppRepository,
     private val appEventBus: AppEventBus
 ) {
@@ -289,6 +299,18 @@ class PageDataManager @Inject constructor(
             ) ?: return
 
             BackgroundType.Native -> return
+            BackgroundType.Daily -> {
+                // Render the calendar template here, on the page-load IO job,
+                // so the bitmap is cached before raw pen mode resumes.
+                val dailyLoader = DailyBackgroundLoader(context)
+                val value = CachedBackground(background, 0, 1f) { date, _, scale ->
+                    dailyLoader.load(date, SCREEN_WIDTH, SCREEN_HEIGHT, scale)
+                }
+                log.i("Preloaded daily background for $background")
+                setBackground(pageId, value)
+                return
+            }
+
             BackgroundType.Image, ImageRepeating, CoverImage -> -1
         }
         val value = CachedBackground(background, pageNumber, 1f)
@@ -850,7 +872,7 @@ class PageDataManager @Inject constructor(
         }
     }
 
-    private fun invalidateBackground(pageId: String) {
+    fun invalidateBackground(pageId: String) {
         synchronized(accessLock) {
             // Remove page->bg mapping and drop bg if no other page references it
             val key = pageToBackgroundKey.remove(pageId)

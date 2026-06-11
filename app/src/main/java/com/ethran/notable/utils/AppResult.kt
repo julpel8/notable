@@ -43,6 +43,9 @@ sealed class DomainError(
 
     data class DrawingError(val message: String) : DomainError(message)
 
+    data class PermissionDenied(val permission: String) :
+        DomainError("Permission $permission is not granted.")
+
     // Sync Errors
     data object SyncAuthError : DomainError("Authentication failed. Please check your credentials.")
     data object SyncConfigError : DomainError("Sync is not configured correctly.")

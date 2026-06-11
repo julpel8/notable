@@ -52,6 +52,9 @@ interface FolderDao {
     @Query("SELECT * FROM folder")
     fun getAll(): List<Folder>
 
+    @Query("SELECT * FROM folder WHERE title = :title AND parentFolderId IS NULL LIMIT 1")
+    suspend fun getByTitleInRoot(title: String): Folder?
+
     @Insert
     suspend fun create(folder: Folder): Long
 

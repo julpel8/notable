@@ -34,11 +34,16 @@ import com.ethran.notable.editor.state.Mode
 import com.ethran.notable.editor.utils.Pen
 import com.ethran.notable.editor.utils.PenSetting
 import com.ethran.notable.ui.dialogs.BackgroundSelector
+import com.ethran.notable.ui.dialogs.DailyDatePickerDialog
 import com.ethran.notable.ui.noRippleClickable
 import compose.icons.FeatherIcons
+import compose.icons.feathericons.Calendar
+import compose.icons.feathericons.ChevronLeft
+import compose.icons.feathericons.ChevronRight
 import compose.icons.feathericons.Clipboard
 import compose.icons.feathericons.EyeOff
 import compose.icons.feathericons.RefreshCcw
+import java.time.LocalDate
 
 
 private fun isSelected(state: ToolbarUiState, penType: Pen): Boolean {
@@ -60,7 +65,9 @@ fun ToolbarContent(
     }
 
     // On exit or change of toolbar states, check if we should allow raw drawing
-    LaunchedEffect(uiState.isBackgroundSelectorModalOpen, uiState.isMenuOpen) {
+    LaunchedEffect(
+        uiState.isBackgroundSelectorModalOpen, uiState.isMenuOpen, uiState.isDatePickerOpen
+    ) {
         onDrawingStateCheck()
     }
 
@@ -73,6 +80,14 @@ fun ToolbarContent(
             pageNumberInBook = uiState.currentPageNumber,
             onChange = { type, path -> onAction(ToolbarAction.BackgroundChanged(type, path)) },
             onClose = { onAction(ToolbarAction.ToggleBackgroundSelector(false)) }
+        )
+    }
+
+    if (uiState.isDatePickerOpen && uiState.dailyDate != null) {
+        DailyDatePickerDialog(
+            initialDate = LocalDate.parse(uiState.dailyDate),
+            onPick = { picked -> onAction(ToolbarAction.JumpToDate(picked.toString())) },
+            onDismiss = { onAction(ToolbarAction.ToggleDatePicker(false)) }
         )
     }
 
@@ -347,6 +362,40 @@ fun ToolbarContent(
                                 textAlign = TextAlign.Center
                             )
                         }
+                        VerticalDivider()
+                    }
+
+                    if (uiState.dailyDate != null) {
+                        ToolbarButton(
+                            vectorIcon = FeatherIcons.ChevronLeft,
+                            contentDescription = "previous day",
+                            onSelect = { onAction(ToolbarAction.PreviousDay) }
+                        )
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .height(35.dp)
+                                .padding(horizontal = 6.dp)
+                        ) {
+                            Text(
+                                text = uiState.dailyDate,
+                                fontWeight = FontWeight.Light,
+                                modifier = Modifier.noRippleClickable {
+                                    onAction(ToolbarAction.ToggleDatePicker(true))
+                                },
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        ToolbarButton(
+                            vectorIcon = FeatherIcons.ChevronRight,
+                            contentDescription = "next day",
+                            onSelect = { onAction(ToolbarAction.NextDay) }
+                        )
+                        ToolbarButton(
+                            vectorIcon = FeatherIcons.Calendar,
+                            contentDescription = "refresh daily template",
+                            onSelect = { onAction(ToolbarAction.RefreshDailyTemplate) }
+                        )
                         VerticalDivider()
                     }
 

@@ -82,6 +82,7 @@ fun SettingsView(
     onBack: () -> Unit,
     goToWelcome: () -> Unit,
     goToSystemInfo: () -> Unit,
+    goToDiagnostics: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -102,6 +103,7 @@ fun SettingsView(
         onBack = onBack,
         goToWelcome = goToWelcome,
         goToSystemInfo = goToSystemInfo,
+        goToDiagnostics = goToDiagnostics,
         onCheckUpdate = { force ->
             viewModel.checkUpdate(context, force)
         },
@@ -134,6 +136,7 @@ fun SettingsContent(
     onBack: () -> Unit,
     goToWelcome: () -> Unit,
     goToSystemInfo: () -> Unit,
+    goToDiagnostics: () -> Unit = {},
     onCheckUpdate: (Boolean) -> Unit,
     onUpdateSettings: (AppSettings) -> Unit,
     selectedTabInitial: Int = 0,
@@ -181,7 +184,9 @@ fun SettingsContent(
                         callbacks = syncCallbacks,
                     )
 
-                    3 -> DebugSettings(settings, onUpdateSettings, goToWelcome, goToSystemInfo)
+                    3 -> DebugSettings(
+                        settings, onUpdateSettings, goToWelcome, goToSystemInfo, goToDiagnostics
+                    )
                 }
             }
 

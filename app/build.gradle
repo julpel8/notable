@@ -93,6 +93,7 @@ android {
     buildFeatures {
         compose true
         buildConfig true
+        aidl true
     }
     composeOptions {
         kotlinCompilerExtensionVersion compose_version
@@ -171,6 +172,9 @@ dependencies {
     implementation group: 'io.reactivex.rxjava2', name: 'rxandroid', version: '2.1.1'
 
     testImplementation 'junit:junit:4.13.2'
+    // JVM tests that need real android.* behavior (Room/SQLite, Canvas, Log).
+    // Setup notes: see NotebookSerializerPageTest.kt header.
+    testImplementation 'org.robolectric:robolectric:4.14.1'
     androidTestImplementation 'androidx.test.ext:junit:1.3.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
     androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"

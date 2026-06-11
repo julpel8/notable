@@ -11,6 +11,10 @@ sealed class BackgroundType(val key: String, val folderName: String) {
     data object CoverImage : BackgroundType("coverImage", "covers")
     data object Native : BackgroundType("native", "")
 
+    // Daily journal page: the page's background field holds the ISO date and
+    // the template (calendar events, tasks) is rendered dynamically.
+    data object Daily : BackgroundType("daily", "")
+
     // If notebook is of type AutoPdf, its consider Observable.
     // If page is of type AutoPdf, it will follow the page number in notebook.
     data object AutoPdf : BackgroundType("autoPdf", "pdfs")
@@ -33,6 +37,7 @@ sealed class BackgroundType(val key: String, val folderName: String) {
             key == ImageRepeating.key -> ImageRepeating
             key == CoverImage.key -> CoverImage
             key == Native.key -> Native
+            key == Daily.key -> Daily
             key == AutoPdf.key -> AutoPdf
             key.startsWith("pdf") && key.removePrefix("pdf").toIntOrNull() != null -> {
                 val page = key.removePrefix("pdf").toInt()

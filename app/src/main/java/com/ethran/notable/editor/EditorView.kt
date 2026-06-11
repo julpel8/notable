@@ -15,6 +15,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ethran.notable.editor.canvas.CanvasEventBus
 import com.ethran.notable.editor.state.ClipboardStore
@@ -29,10 +32,12 @@ import com.ethran.notable.ui.LocalSnackContext
 import com.ethran.notable.ui.SnackConf
 import com.ethran.notable.ui.convertDpToPixel
 import com.ethran.notable.ui.theme.InkaTheme
+import com.ethran.notable.utils.isToday
 import io.shipbook.shipbooksdk.ShipBook
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
 
 private val log = ShipBook.getLogger("EditorView")
 
@@ -197,6 +202,32 @@ fun EditorView(
 //        }
 
         val toolbarState by viewModel.toolbarState.collectAsStateWithLifecycle()
+
+        // Daily journal: when the device resumes on a later day than the open
+        // daily page (sleep across midnight, reboot…), offer to jump to today.
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    val dailyDate = toolbarState.dailyDate
+                    if (dailyDate != null && !isToday(dailyDate)) {
+                        scope.launch {
+                            snackManager.displaySnack(
+                                SnackConf(
+                                    text = "A new day has started",
+                                    duration = 10000,
+                                    actions = listOf("Go to today" to {
+                                        viewModel.onToolbarAction(ToolbarAction.GoToToday)
+                                    })
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
 
         // Observe pageId changes from ViewModel state for navigation
         LaunchedEffect(viewModel) {

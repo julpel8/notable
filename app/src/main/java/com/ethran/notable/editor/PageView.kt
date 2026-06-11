@@ -40,6 +40,7 @@ import com.ethran.notable.editor.utils.strokeBounds
 import com.ethran.notable.editor.utils.times
 import com.ethran.notable.editor.utils.toIntOffset
 import com.ethran.notable.gestures.ZOOM_SNAP_THRESHOLD
+import com.ethran.notable.io.DailyBackgroundLoader
 import com.ethran.notable.ui.SnackConf
 import com.ethran.notable.ui.SnackState
 import com.ethran.notable.utils.onError
@@ -156,6 +157,21 @@ class PageView(
         val newBackground = CachedBackground(filePath, pageNumber, scale + 0.1f)
         currentBackground = newBackground
         log.i("Background bitmap: ${newBackground.bitmap}")
+        return newBackground.bitmap
+    }
+
+    // Daily template: same caching contract as getOrLoadBackground, keyed by
+    // the ISO date, but rendered from calendar data instead of read from disk.
+    private fun getOrLoadDailyBackground(dateIso: String, scale: Float): Bitmap? {
+        val cached = currentBackground
+        if (cached.matches(dateIso, 0, scale)) {
+            return cached.bitmap
+        }
+        val dailyLoader = DailyBackgroundLoader(context)
+        val newBackground = CachedBackground(dateIso, 0, scale + 0.1f) { date, _, s ->
+            dailyLoader.load(date, viewWidth, viewHeight, s)
+        }
+        currentBackground = newBackground
         return newBackground.bitmap
     }
 
@@ -837,6 +853,10 @@ class PageView(
 
                 BackgroundType.Native -> {
                     null
+                }
+
+                BackgroundType.Daily -> {
+                    getOrLoadDailyBackground(bg, scale)
                 }
             }
         drawBg(

@@ -75,6 +75,9 @@ interface PageDao {
     @Query("SELECT * FROM page WHERE notebookId is null AND parentFolderId is :folderId")
     fun getSinglePagesInFolder(folderId: String? = null): LiveData<List<Page>>
 
+    @Query("SELECT * FROM page WHERE EXISTS (SELECT 1 FROM stroke WHERE stroke.pageId = page.id) ORDER BY updatedAt DESC LIMIT 1")
+    suspend fun getLastEditedPageWithStrokes(): Page?
+
     @Insert
     suspend fun create(page: Page): Long
 

@@ -299,6 +299,7 @@ fun NotebookConfigDialog(
                                     BackgroundType.Image -> "Image"
                                     BackgroundType.ImageRepeating -> "Repeating Image"
                                     BackgroundType.Native -> "Native"
+                                    BackgroundType.Daily -> "Daily journal"
                                     is BackgroundType.Pdf -> "Static pdf Page"
                                 }
                             Text(
