@@ -7,6 +7,9 @@ import com.ethran.notable.data.db.FolderDao
 import com.ethran.notable.data.db.Page
 import com.ethran.notable.data.db.PageDao
 import com.ethran.notable.data.model.BackgroundType
+import com.ethran.notable.data.model.encodeDailyValues
+import com.ethran.notable.data.model.parseDailyValues
+import com.ethran.notable.data.model.toggleDailyValue
 import io.shipbook.shipbooksdk.ShipBook
 import java.time.LocalDate
 import javax.inject.Inject
@@ -34,6 +37,18 @@ class JournalRepository @Inject constructor(
 
     suspend fun setExportedAt(dailyPage: DailyPage, exportedAt: java.util.Date) {
         dailyPageDao.update(dailyPage.copy(exportedAt = exportedAt))
+    }
+
+    /**
+     * Flips one interactive template value (checkbox semantics, see
+     * DailyValues.kt) for the daily page owning [pageId]. No-op for pages
+     * that are not journal pages.
+     */
+    suspend fun toggleValue(pageId: String, key: String) {
+        val dailyPage = dailyPageDao.getByPageId(pageId) ?: return
+        val values = toggleDailyValue(parseDailyValues(dailyPage.valuesJson), key)
+        dailyPageDao.updateValuesByPageId(pageId, encodeDailyValues(values))
+        log.d("Toggled $key for ${dailyPage.date}")
     }
 
     /**

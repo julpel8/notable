@@ -110,3 +110,11 @@ val MIGRATION_35_36 = object : Migration(35, 36) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_DailyPage_pageId` ON `DailyPage` (`pageId`)")
     }
 }
+
+// Interactive daily templates: per-day template state (checked tasks, future
+// counters) stored as a JSON map.
+val MIGRATION_36_37 = object : Migration(36, 37) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `DailyPage` ADD COLUMN `valuesJson` TEXT NOT NULL DEFAULT '{}'")
+    }
+}

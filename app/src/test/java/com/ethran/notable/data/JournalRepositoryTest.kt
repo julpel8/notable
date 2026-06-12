@@ -3,11 +3,16 @@ package com.ethran.notable.data
 import androidx.room.Room
 import com.ethran.notable.data.db.AppDatabase
 import com.ethran.notable.data.model.BackgroundType
+import com.ethran.notable.data.model.isCheckedValue
+import com.ethran.notable.data.model.parseDailyValues
+import com.ethran.notable.data.model.taskValueKey
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -93,5 +98,44 @@ class JournalRepositoryTest {
 
         assertEquals("2026-06-10", repository.getByPageId(dailyPage.pageId)?.date)
         assertNull(repository.getByPageId("not-a-daily-page-id"))
+    }
+
+    @Test
+    fun `new daily pages start with empty interactive values`() = runBlocking {
+        val dailyPage = repository.getOrCreateDailyPage(LocalDate.parse("2026-06-10"))
+        assertEquals(emptyMap<String, Float>(), parseDailyValues(dailyPage.valuesJson))
+    }
+
+    @Test
+    fun `toggleValue persists and a second toggle clears it`() = runBlocking {
+        val dailyPage = repository.getOrCreateDailyPage(LocalDate.parse("2026-06-10"))
+        val key = taskValueKey("Pay rent")
+
+        repository.toggleValue(dailyPage.pageId, key)
+        var values = parseDailyValues(repository.getByPageId(dailyPage.pageId)!!.valuesJson)
+        assertTrue(isCheckedValue(values[key]))
+
+        repository.toggleValue(dailyPage.pageId, key)
+        values = parseDailyValues(repository.getByPageId(dailyPage.pageId)!!.valuesJson)
+        assertFalse(isCheckedValue(values[key]))
+    }
+
+    @Test
+    fun `toggleValue is a no-op for non-journal pages`() = runBlocking {
+        // must not throw nor create rows
+        repository.toggleValue("not-a-daily-page-id", taskValueKey("Anything"))
+        assertNull(repository.getByPageId("not-a-daily-page-id"))
+    }
+
+    @Test
+    fun `getOrCreateDailyPage does not reset existing values`() = runBlocking {
+        val date = LocalDate.parse("2026-06-10")
+        val dailyPage = repository.getOrCreateDailyPage(date)
+        repository.toggleValue(dailyPage.pageId, taskValueKey("Pay rent"))
+
+        val again = repository.getOrCreateDailyPage(date)
+        assertTrue(
+            isCheckedValue(parseDailyValues(again.valuesJson)[taskValueKey("Pay rent")])
+        )
     }
 }

@@ -92,6 +92,16 @@ class EditorControlTower(
     }
 
 
+    /**
+     * One-finger tap, in view coordinates. Routes it to the interactive
+     * daily-template zones (checkboxes); returns true when consumed so the
+     * caller skips the configured tap gestures.
+     */
+    fun handleViewportTap(position: Offset): Boolean {
+        val pagePoint = position / page.zoomLevel.value + page.scroll
+        return viewModel.handleDailyTemplateTap(pagePoint)
+    }
+
     fun setIsDrawing(value: Boolean) {
         if (viewModel.toolbarState.value.isDrawing == value) {
             logEditorControlTower.w("IsDrawing already set to $value")

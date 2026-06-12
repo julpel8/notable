@@ -21,6 +21,7 @@ import com.ethran.notable.data.model.BackgroundType
 import com.ethran.notable.data.model.BackgroundType.AutoPdf.getPage
 import com.ethran.notable.data.model.BackgroundType.CoverImage
 import com.ethran.notable.data.model.BackgroundType.ImageRepeating
+import com.ethran.notable.data.model.DailyTapZone
 import com.ethran.notable.editor.canvas.CanvasEventBus
 import com.ethran.notable.editor.utils.saveHQPagePreview
 import com.ethran.notable.editor.utils.savePageThumbnail
@@ -100,6 +101,10 @@ class PageDataManager @Inject constructor(
     private val backgroundCache = LinkedHashMap<String, CachedBackground>()
     private val pageToBackgroundKey = HashMap<String, String>()
     private val bitmapCache = LinkedHashMap<String, SoftReference<Bitmap>>()
+
+    // Finger-tappable rectangles of the daily template (page coordinates),
+    // refreshed together with the background bitmap they were rendered with.
+    private val dailyTapZones = HashMap<String, List<DailyTapZone>>()
 
     // observe background file changes
     // fileObservers: filename to observer
@@ -304,7 +309,9 @@ class PageDataManager @Inject constructor(
                 // so the bitmap is cached before raw pen mode resumes.
                 val dailyLoader = DailyBackgroundLoader(context)
                 val value = CachedBackground(background, 0, 1f) { date, _, scale ->
-                    dailyLoader.load(date, SCREEN_WIDTH, SCREEN_HEIGHT, scale)
+                    val render = dailyLoader.loadWithZones(date, SCREEN_WIDTH, SCREEN_HEIGHT, scale)
+                    setDailyTapZones(pageId, render.tapZones)
+                    render.bitmap
                 }
                 log.i("Preloaded daily background for $background")
                 setBackground(pageId, value)
@@ -886,8 +893,20 @@ class PageDataManager @Inject constructor(
                 }
             }
             bitmapCache.remove(pageId) // existing windowed bitmap cache per page stays per-page
+            dailyTapZones.remove(pageId)
             log.d("Invalidated background cache for page: $pageId")
         }
+    }
+
+    fun setDailyTapZones(pageId: String, zones: List<DailyTapZone>) {
+        synchronized(accessLock) {
+            if (zones.isEmpty()) dailyTapZones.remove(pageId)
+            else dailyTapZones[pageId] = zones
+        }
+    }
+
+    fun getDailyTapZones(pageId: String): List<DailyTapZone> {
+        return synchronized(accessLock) { dailyTapZones[pageId] ?: emptyList() }
     }
 
     fun onExit(targetPageId: String, windowedBitmap: Bitmap, scope: CoroutineScope) {
@@ -929,6 +948,7 @@ class PageDataManager @Inject constructor(
             strokesById.remove(pageId)
             imagesById.remove(pageId)
             dataLoadingJobs.remove(pageId)
+            dailyTapZones.remove(pageId)
             currentCacheSizeMB -= entrySizeMB[pageId] ?: 0
             entrySizeMB.remove(pageId)
 

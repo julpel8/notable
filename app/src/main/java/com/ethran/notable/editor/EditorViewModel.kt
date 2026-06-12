@@ -14,7 +14,9 @@ import com.ethran.notable.data.datastore.EditorSettingCacheManager
 import com.ethran.notable.data.datastore.GlobalAppSettings
 import com.ethran.notable.data.db.getPageIndex
 import com.ethran.notable.data.db.getParentFolder
+import androidx.compose.ui.geometry.Offset
 import com.ethran.notable.data.model.BackgroundType
+import com.ethran.notable.data.model.zoneAt
 import com.ethran.notable.di.ApplicationScope
 import com.ethran.notable.editor.EditorViewModel.Companion.DEFAULT_PEN_SETTINGS
 import com.ethran.notable.editor.canvas.CanvasEventBus
@@ -690,6 +692,28 @@ class EditorViewModel @Inject constructor(
         pageDataManager.invalidateBackground(pageId)
         pageDataManager.refreshPageFromDb(pageId)
         CanvasEventBus.forceUpdate.emit(null)
+    }
+
+    /**
+     * Finger tap on the page, in page coordinates. Returns true (gesture
+     * consumed) when it lands on an interactive zone of the daily template;
+     * the toggle and the re-render then run on IO. Non-journal pages have no
+     * zones and always return false.
+     */
+    fun handleDailyTemplateTap(pagePoint: Offset): Boolean {
+        if (_toolbarState.value.dailyDate == null) return false
+        val pageId = currentPageId
+        val zone = pageDataManager.getDailyTapZones(pageId).zoneAt(pagePoint.x, pagePoint.y)
+            ?: return false
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                journalRepository.toggleValue(pageId, zone.valueKey)
+                refreshDailyTemplate(pageId)
+            } catch (e: Exception) {
+                log.e("Daily template tap failed for ${zone.valueKey}: ${e.message}")
+            }
+        }
+        return true
     }
 
     /**

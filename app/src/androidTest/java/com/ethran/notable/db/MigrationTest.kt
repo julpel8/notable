@@ -8,6 +8,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ethran.notable.data.db.AppDatabase
+import com.ethran.notable.data.db.MIGRATION_35_36
+import com.ethran.notable.data.db.MIGRATION_36_37
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
 import org.junit.Rule
@@ -115,8 +117,8 @@ class MigrationTest {
 
     @Test
     @Throws(IOException::class)
-    fun migrate34To35_autoMigration_addsDailyPageTable() {
-        val dbName = "migration-test-34-35"
+    fun migrate34ToCurrent_createsDailyPageTable_withDefaultValues() {
+        val dbName = "migration-test-34-current"
 
         // 1. Create DB with version 34 schema and seed a standalone page
         val db = helper.createDatabase(dbName, 34)
@@ -139,8 +141,10 @@ class MigrationTest {
         )
         db.close()
 
-        // 2. Reopen with version 35 to trigger AutoMigration(34, 35)
+        // 2. Reopen at the current version: AutoMigration(34, 35), then the
+        // manual 35->36 (DailyPage table) and 36->37 (valuesJson column)
         val migratedDb = Room.databaseBuilder(context, AppDatabase::class.java, dbName)
+            .addMigrations(MIGRATION_35_36, MIGRATION_36_37)
             .build().openHelper.writableDatabase
 
         // 3. Existing data is preserved
@@ -152,13 +156,17 @@ class MigrationTest {
             assertEquals("daily", it.getString(1))
         }
 
-        // 4. The new DailyPage table exists and enforces its FK (CASCADE)
+        // 4. The new DailyPage table exists, defaults valuesJson to '{}',
+        // and enforces its FK (CASCADE)
         migratedDb.execSQL(
             "INSERT INTO DailyPage (date, pageId, exportedAt) VALUES ('2026-06-10', 'daily-page-1', NULL)"
         )
-        migratedDb.query("SELECT pageId FROM DailyPage WHERE date = '2026-06-10'").use {
+        migratedDb.query(
+            "SELECT pageId, valuesJson FROM DailyPage WHERE date = '2026-06-10'"
+        ).use {
             assertTrue(it.moveToFirst())
             assertEquals("daily-page-1", it.getString(0))
+            assertEquals("{}", it.getString(1))
         }
         migratedDb.execSQL("DELETE FROM Page WHERE id = 'daily-page-1'")
         migratedDb.query("SELECT COUNT(*) FROM DailyPage").use {
@@ -167,5 +175,36 @@ class MigrationTest {
         }
     }
 
+    @Test
+    @Throws(IOException::class)
+    fun migrate36To37_addsValuesJsonToExistingRows() {
+        val dbName = "migration-test-36-37"
 
+        // 1. Create DB at version 36 with a daily page row (pre-valuesJson)
+        val db = helper.createDatabase(dbName, 36)
+        db.execSQL(
+            """
+            INSERT INTO Page (
+                id, scroll, notebookId, background, backgroundType,
+                parentFolderId, createdAt, updatedAt
+            ) VALUES (
+                'daily-page-1', 0, NULL, '2026-06-10', 'daily',
+                NULL, 1620000000, 1620000000
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "INSERT INTO DailyPage (date, pageId, exportedAt) VALUES ('2026-06-10', 'daily-page-1', NULL)"
+        )
+        db.close()
+
+        // 2. Run the manual migration alone and validate the schema
+        helper.runMigrationsAndValidate(dbName, 37, true, MIGRATION_36_37).use { migratedDb ->
+            // 3. Existing rows pick up the '{}' default
+            migratedDb.query("SELECT valuesJson FROM DailyPage WHERE date = '2026-06-10'").use {
+                assertTrue(it.moveToFirst())
+                assertEquals("{}", it.getString(0))
+            }
+        }
+    }
 }

@@ -8,7 +8,10 @@ import android.graphics.Paint
 import android.text.TextUtils
 import androidx.core.graphics.createBitmap
 import com.ethran.notable.data.CalendarRepository.CalendarEvent
+import com.ethran.notable.data.model.DailyTapZone
 import com.ethran.notable.data.model.TodayTask
+import com.ethran.notable.data.model.isCheckedValue
+import com.ethran.notable.data.model.taskValueKey
 import com.ethran.notable.utils.formatBannerDate
 import java.time.Instant
 import java.time.ZoneId
@@ -30,9 +33,29 @@ class CalendarTemplateRenderer {
         // null = READ_CALENDAR not granted (renders a discreet notice)
         val events: List<CalendarEvent>?,
         val tasks: List<TodayTask> = emptyList(),
+        // Interactive template state (DailyValues): checked task keys
+        val values: Map<String, Float> = emptyMap(),
+    )
+
+    data class RenderResult(
+        val bitmap: Bitmap,
+        // Page-coordinate rectangles for finger interaction (task checkboxes)
+        val tapZones: List<DailyTapZone>,
     )
 
     fun render(
+        dateIso: String,
+        data: TemplateData,
+        widthPx: Int,
+        heightPx: Int,
+        scale: Float,
+        leftInsetPx: Float = 0f,
+        topInsetPx: Float = 0f,
+    ): Bitmap = renderWithZones(
+        dateIso, data, widthPx, heightPx, scale, leftInsetPx, topInsetPx
+    ).bitmap
+
+    fun renderWithZones(
         dateIso: String,
         data: TemplateData,
         widthPx: Int,
@@ -42,7 +65,7 @@ class CalendarTemplateRenderer {
         // passes the toolbar thickness on the side it is docked (0 otherwise).
         leftInsetPx: Float = 0f,
         topInsetPx: Float = 0f,
-    ): Bitmap {
+    ): RenderResult {
         // Cap the render scale: beyond 2x the e-ink display gains nothing.
         val s = scale.coerceIn(1f, 2f)
         val bitmap = createBitmap((widthPx * s).toInt(), (heightPx * s).toInt())
@@ -70,9 +93,12 @@ class CalendarTemplateRenderer {
 
         y = drawEvents(canvas, data.events, margin, y, columnWidth - margin * 1.5f)
         y += 30f
-        drawTasks(canvas, data.tasks, margin, y, columnWidth - margin * 1.5f, height)
+        val zones = drawTasks(
+            canvas, data.tasks, data.values, margin, y,
+            columnWidth - margin * 1.5f, height, leftInsetPx, topInsetPx
+        )
 
-        return bitmap
+        return RenderResult(bitmap, zones)
     }
 
     // ---- sections ----
@@ -131,11 +157,14 @@ class CalendarTemplateRenderer {
     private fun drawTasks(
         canvas: Canvas,
         tasks: List<TodayTask>,
+        values: Map<String, Float>,
         x: Float,
         startY: Float,
         maxWidth: Float,
         pageHeight: Float,
-    ) {
+        leftInsetPx: Float,
+        topInsetPx: Float,
+    ): List<DailyTapZone> {
         var y = startY + sectionPaint.textSize
         canvas.drawText("Tasks", x, y, sectionPaint)
         y += 16f
@@ -147,12 +176,26 @@ class CalendarTemplateRenderer {
         // Printed tasks (from today-tasks.json) first, then blank rows to fill.
         val blankRows = if (tasks.isEmpty()) 6 else 2
         val rows: List<TodayTask?> = tasks + List(blankRows) { null }
+        val zones = mutableListOf<DailyTapZone>()
 
         for (task in rows) {
             if (y + rowHeight > pageHeight - 30f) break
             val top = y + (rowHeight - checkboxSize) / 2f
             canvas.drawRect(x, top, x + checkboxSize, top + checkboxSize, checkboxPaint)
             if (task != null) {
+                val key = taskValueKey(task.title)
+                if (isCheckedValue(values[key])) {
+                    // X mark, inset so it stays inside the box outline
+                    val inset = 5f
+                    canvas.drawLine(
+                        x + inset, top + inset,
+                        x + checkboxSize - inset, top + checkboxSize - inset, checkmarkPaint
+                    )
+                    canvas.drawLine(
+                        x + checkboxSize - inset, top + inset,
+                        x + inset, top + checkboxSize - inset, checkmarkPaint
+                    )
+                }
                 val label = buildString {
                     append(task.title)
                     task.project?.let { append("  [").append(it).append("]") }
@@ -163,9 +206,21 @@ class CalendarTemplateRenderer {
                     top + checkboxSize - 7f,
                     taskPaint
                 )
+                // The canvas is translated by the insets, so page coordinates
+                // are local + inset. A 28px box is small for a finger on
+                // ~227 ppi e-ink: pad the hit target on every side.
+                val slop = HIT_SLOP
+                zones += DailyTapZone(
+                    left = x + leftInsetPx - slop,
+                    top = top + topInsetPx - slop,
+                    right = x + checkboxSize + leftInsetPx + slop,
+                    bottom = top + checkboxSize + topInsetPx + slop,
+                    valueKey = key,
+                )
             }
             y += rowHeight
         }
+        return zones
     }
 
     private fun ellipsize(text: String, paint: Paint, maxWidth: Float): String =
@@ -231,5 +286,16 @@ class CalendarTemplateRenderer {
         color = Color.BLACK
         style = Paint.Style.STROKE
         strokeWidth = 2.5f
+    }
+    private val checkmarkPaint = Paint().apply {
+        isAntiAlias = false
+        color = Color.BLACK
+        style = Paint.Style.STROKE
+        strokeWidth = 3.5f
+    }
+
+    companion object {
+        // Extra finger-tap padding around each checkbox, in page units
+        const val HIT_SLOP = 14f
     }
 }

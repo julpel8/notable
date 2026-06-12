@@ -168,8 +168,11 @@ class PageView(
             return cached.bitmap
         }
         val dailyLoader = DailyBackgroundLoader(context)
+        val pageId = currentPageId
         val newBackground = CachedBackground(dateIso, 0, scale + 0.1f) { date, _, s ->
-            dailyLoader.load(date, viewWidth, viewHeight, s)
+            val render = dailyLoader.loadWithZones(date, viewWidth, viewHeight, s)
+            pageDataManager.setDailyTapZones(pageId, render.tapZones)
+            render.bitmap
         }
         currentBackground = newBackground
         return newBackground.bitmap

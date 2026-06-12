@@ -33,8 +33,12 @@ Contents:
 - DailyPage (`app/src/main/java/com/ethran/notable/data/db/DailyPage.kt`)
   - Daily journal mapping: one row per local calendar day. Fields: `date` (String PK, ISO `yyyy-MM-dd`),
     `pageId` (indexed FK to Page, ON DELETE CASCADE), `exportedAt` (nullable Date, reserved for the
-    Markdown export pipeline). The referenced Page is standalone (`notebookId = NULL`) with
-    `backgroundType = "daily"` and `background` holding the same ISO date.
+    Markdown export pipeline), `valuesJson` (TEXT NOT NULL DEFAULT `'{}'`, interactive template state).
+    The referenced Page is standalone (`notebookId = NULL`) with `backgroundType = "daily"` and
+    `background` holding the same ISO date.
+  - `valuesJson` is a JSON object `key -> Float` (see `data/model/DailyValues.kt`). Task checkboxes
+    printed from `today-tasks.json` use key `task:<title>` with value `1` when checked; the key is
+    absent when unchecked. Unknown keys are preserved (future counters/templates).
 
 ---
 

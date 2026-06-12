@@ -192,6 +192,17 @@ fun EditorGestureReceiver(
 
                         if (gestureState.isOneFinger()) {
                             if (gestureState.isOneFingerTap()) {
+                                // Interactive daily-template zones win over tap
+                                // gestures inside their rects, and skip the
+                                // double-tap wait for instant checkbox feedback.
+                                val tapPosition = gestureState.getFirstPositionF()
+                                if (tapPosition != null && controlTower.handleViewportTap(
+                                        Offset(tapPosition.x, tapPosition.y)
+                                    )
+                                ) {
+                                    log.d("Tap consumed by daily template zone")
+                                    return@awaitEachGesture
+                                }
                                 if (withTimeoutOrNull(DOUBLE_TAP_TIMEOUT_MS) {
                                         val secondDown = awaitFirstDown()
                                         val deltaTime =

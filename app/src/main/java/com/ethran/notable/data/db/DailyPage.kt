@@ -30,6 +30,9 @@ data class DailyPage(
     @ColumnInfo(index = true) val pageId: String,
     // When this day was last exported to Markdown (future export pipeline)
     val exportedAt: Date? = null,
+    // Interactive template state (JSON map key -> Float, see DailyValues.kt):
+    // task checkbox toggles today, counters for future templates.
+    @ColumnInfo(defaultValue = "'{}'") val valuesJson: String = "{}",
 )
 
 @Dao
@@ -39,6 +42,14 @@ interface DailyPageDao {
 
     @Query("SELECT * FROM dailypage WHERE pageId = :pageId")
     suspend fun getByPageId(pageId: String): DailyPage?
+
+    // Blocking variant for the synchronous background-render path
+    // (DailyBackgroundLoader runs on an IO thread outside any coroutine).
+    @Query("SELECT * FROM dailypage WHERE date = :date")
+    fun getByDateBlocking(date: String): DailyPage?
+
+    @Query("UPDATE dailypage SET valuesJson = :valuesJson WHERE pageId = :pageId")
+    suspend fun updateValuesByPageId(pageId: String, valuesJson: String)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(dailyPage: DailyPage): Long

@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import com.ethran.notable.data.CalendarRepository.CalendarEvent
 import com.ethran.notable.data.model.TodayTask
+import com.ethran.notable.data.model.taskValueKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -116,5 +117,91 @@ class CalendarTemplateRendererTest {
             widthPx = 600, heightPx = 800, scale = 1f,
         )
         assertTrue(hasInk(bitmap))
+    }
+
+    // ---- interactive zones ----
+
+    private val twoTasks = listOf(
+        TodayTask("Pay rent", due = "2026-06-10", project = "Home"),
+        TodayTask("Call mom"),
+    )
+
+    @Test
+    fun `one tap zone per printed task, keyed by title, none for blank rows`() {
+        val result = renderer.renderWithZones(
+            "2026-06-10",
+            CalendarTemplateRenderer.TemplateData(events = emptyList(), tasks = twoTasks),
+            widthPx = 600, heightPx = 800, scale = 1f,
+        )
+        assertEquals(
+            listOf(taskValueKey("Pay rent"), taskValueKey("Call mom")),
+            result.tapZones.map { it.valueKey },
+        )
+        // Zones (page coordinates) stay inside the page, slop included
+        for (zone in result.tapZones) {
+            assertTrue(zone.left >= 0f && zone.top >= 0f)
+            assertTrue(zone.right <= 600f && zone.bottom <= 800f)
+            assertTrue(zone.right > zone.left && zone.bottom > zone.top)
+        }
+    }
+
+    @Test
+    fun `no tasks means no tap zones`() {
+        val result = renderer.renderWithZones(
+            "2026-06-10",
+            CalendarTemplateRenderer.TemplateData(events = emptyList()),
+            widthPx = 600, heightPx = 800, scale = 1f,
+        )
+        assertTrue(result.tapZones.isEmpty())
+    }
+
+    @Test
+    fun `checked task gets an X inside its checkbox, unchecked stays empty`() {
+        fun centerPixel(zoneIndex: Int, values: Map<String, Float>): Int {
+            val result = renderer.renderWithZones(
+                "2026-06-10",
+                CalendarTemplateRenderer.TemplateData(
+                    events = emptyList(), tasks = twoTasks, values = values
+                ),
+                widthPx = 600, heightPx = 800, scale = 1f,
+            )
+            // Zone = checkbox rect + symmetric slop, so its center is the
+            // box center, which the X mark crosses.
+            val zone = result.tapZones[zoneIndex]
+            val cx = ((zone.left + zone.right) / 2f).toInt()
+            val cy = ((zone.top + zone.bottom) / 2f).toInt()
+            return result.bitmap.getPixel(cx, cy)
+        }
+
+        val checked = mapOf(taskValueKey("Pay rent") to 1f)
+        assertEquals(Color.BLACK, centerPixel(0, checked))
+        assertEquals(Color.WHITE, centerPixel(1, checked))
+        assertEquals(Color.WHITE, centerPixel(0, emptyMap()))
+    }
+
+    @Test
+    fun `tap zones follow the toolbar insets`() {
+        fun zonesWithInsets(left: Float, top: Float) = renderer.renderWithZones(
+            "2026-06-10",
+            CalendarTemplateRenderer.TemplateData(events = emptyList(), tasks = twoTasks),
+            widthPx = 600, heightPx = 800, scale = 1f,
+            leftInsetPx = left, topInsetPx = top,
+        ).tapZones
+
+        val plain = zonesWithInsets(0f, 0f)
+        val inset = zonesWithInsets(40f, 50f)
+        assertEquals(plain[0].left + 40f, inset[0].left, 0.01f)
+        assertEquals(plain[0].top + 50f, inset[0].top, 0.01f)
+    }
+
+    @Test
+    fun `zones are in page units regardless of render scale`() {
+        fun zones(scale: Float) = renderer.renderWithZones(
+            "2026-06-10",
+            CalendarTemplateRenderer.TemplateData(events = emptyList(), tasks = twoTasks),
+            widthPx = 600, heightPx = 800, scale = scale,
+        ).tapZones
+
+        assertEquals(zones(1f), zones(2f))
     }
 }
